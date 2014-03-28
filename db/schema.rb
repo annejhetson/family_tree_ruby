@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20140328162500) do
+ActiveRecord::Schema.define(version: 20140328190407) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -20,8 +20,13 @@ ActiveRecord::Schema.define(version: 20140328162500) do
     t.string  "name"
     t.integer "spouse_id"
     t.boolean "sex_male"
-    t.integer "parent_1"
-    t.integer "parent_2"
+    t.integer "parent_1_id"
+    t.integer "parent_2_id"
   end
 
 end
+
+  # has_many :kids2, class_name: "Person",
+  #                 foreign_key: "parent_2_id"
+
+  # belongs_to :parent_2, class_name: "Person"

@@ -16,10 +16,14 @@ def menu
     puts 'Press l to list out the family members.'
     puts 'Press m to add who someone is married to.'
     puts 'Press s to see who someone is married to.'
-    puts 'Press p to add parents.'
-    puts 'Press d to delete.'
+    # puts 'Press p to update parents.'
+    puts 'Press u to update.'
     puts 'Press lp to list a persons parents'
+    puts 'Press lap to list all parents'
+    puts 'Press lag to list all grandparents'
+    puts 'Press ww to list a persons relatives'
     puts 'Press e to exit.'
+    puts 'Press d to delete....use with extream caution!!!'
     choice = gets.chomp
 
     case choice
@@ -28,13 +32,19 @@ def menu
     when 'l'
       list
     when 'm'
-      add_marriage
+      update_marriage
     when 's'
       show_marriage
     when 'd'
       delete_person
     when 'lp'
       list_parent
+    when 'lap'
+      list_all_parents
+    when 'lag'
+      list_all_grandparents
+    when 'ww'
+      list_relatives
     when 'error'
       5.times do
         error
@@ -62,15 +72,37 @@ def add_person
     error
     add_person
   end
-  Person.create(:name => name, :sex_male => gender)
+  # binding.pry
+  new_person = Person.create(:name => name, :sex_male => gender)
+  person = Person.where(name: name).first
+
+  add_parents(person)
+  puts "Thanks for adding your parent information!\n"
+
+  add_marriage(person)
+
   puts name + " was added to the family tree.\n\n"
 end
 
-def add_marriage
+def add_marriage(person)
+  list
+  puts "What is the number of your spouse or 'ns'"
+  spouse1 = gets.chomp
+  if spouse1 == 'ns'
+
+    person.update(spouse_id: 0)
+  else
+  person.update(spouse_id: spouse1.to_i)
+  spouse2 = Person.find(spouse1.to_i)
+  spouse2.update(spouse_id: person.id)
+  end
+end
+
+def update_marriage
   list
   puts 'What is the number of the first spouse?'
   spouse1 = Person.find(gets.chomp)
-  puts 'What is the number of the second spouse?'
+  puts 'What is the number of the second spouse or "ns"'
   spouse2 = Person.find(gets.chomp)
   spouse1.update(:spouse_id => spouse2.id)
   puts spouse1.name + " is now married to " + spouse2.name + "."
@@ -85,25 +117,89 @@ def list
   puts "\n"
 end
 
+def list_grandparents
+  list
+  choice = gets.chomp.to_i
+  person = Person.find(choice)
+  person.parent.each {|parent| parent.parent.each {|x| puts x.name}}
+  puts "GRANDPA!!!!!!"
+end
+
+def list_all_grandparents
+  people = Person.order(:id)
+  people.each do |person|
+    if person.parent_1 != nil && person.parent_2 != nil
+      person.parent.each do|parent|
+        if parent.parent_1 != nil && parent.parent_2 != nil
+          parent.parent.each do |grandparent|
+            if  parent.parent_1 != nil && parent.parent_2 != nil
+              puts "#{person.name}, I love my grandparent: #{grandparent.name}!!!"
+            else
+              puts "NO GRANDPARENT"
+            end
+          end
+
+        else
+          puts "NO PARENT GRANDPARENTS"
+        end
+      end
+    else
+      puts 'DONT HAVE PARENTS'
+    end
+  end
+end
+
+def list_all_parents
+  people = Person.order(:id)
+  people.each do |person|
+    if person.parent_1 != nil && person.parent_2 != nil
+      person.parent.each do|parent|
+
+        if parent.name != nil
+          puts "#{person.name}........... has parent: #{parent.name}"
+        else
+          puts "No parent"
+        end
+      end
+    else
+      puts "#{person.name}......... parent doesn't exist or might have one..."
+    end
+  end
+end
+
 def list_parent
   list
   puts "Please choose a person's id, to see their parents"
   person = Person.find(gets.chomp.to_i)
 
-  if person.parent_1 == nil && person.parent_2 == nil
+  if person.parent_1_id == nil && person.parent_2_id == nil
     puts "Please update parent information for #{person.name}."
-  elsif person.parent_1 == 0 && person.parent_2 == 0
+  elsif person.parent_1_id == 0 && person.parent_2_id == 0
      puts "#{person.name} has no parents on record."
-  elsif person.parent_1 > 0 && person.parent_2 == 0
-    parent_1 = Person.find(person.parent_1.to_i)
-    puts "#{person.name}'s parent is #{parent_1.name}."
+  elsif person.parent_1_id > 0 && person.parent_2_id == 0
+    parent_1_id = Person.find(person.parent_1_id.to_i)
+    puts "#{person.name}'s parent is #{parent_1_id.name}."
   else
-    parent_1 = Person.find(person.parent_1.to_i)
-    parent_2 = Person.find(person.parent_2.to_i)
-    puts "#{person.name} parents are #{parent_1.name} and #{parent_2.name}."
+    parent_1_id = Person.find(person.parent_1_id.to_i)
+    parent_2_id = Person.find(person.parent_2_id.to_i)
+    puts "#{person.name} parents are #{parent_1_id.name} and #{parent_2_id.name}."
 
   end
 end
+
+def list_relatives
+  list
+  puts "Please choose a person's id, to see their relatives"
+  person = Person.find(gets.chomp.to_i)
+
+
+  puts "#{person.name} is married to #{person.spouse.name}"
+  puts "My parents are #{person.parent_1.name} and #{person.parent_2.name}"
+  puts "My grandparents are #{person.parent_1.parent_1.name} and #{person.parent_1.parent_2.name}"
+  puts "My grandparents are also #{person.parent_2.parent_1.name} and #{person.parent_2.parent_2.name}"
+  person.sibling
+end
+
 
 def show_marriage
   list
@@ -123,28 +219,54 @@ def delete_person
 
 end
 
-def add_parents
+def add_parents(person)
+  puts "\n "
+  list
+  puts "Please enter the id of parent 1 or np for no parent"
+  parent_1_id = gets.chomp.to_i
+  # binding.pry
+  if parent_1_id == "np"
+    parent_1_id = 0
+  end
+  puts "Please enter the id of parent 2 or np for no parent"
+  parent_2_id = gets.chomp.to_i
+  if parent_2_id == "np"
+    parent_2_id = 0
+  end
+  person.update(parent_1_id: parent_1_id, parent_2_id: parent_2_id)
+  if parent_1_id == 0 && parent_2_id == 0
+    puts "#{person.name}'s parent status has been updated"
+  elsif parent_2_id == 0
+  puts "#{person.name}'s parent, #{Person.find(parent_1_id).name} has been added as a single parent...depressing"
+  elsif parent_2_id > 0 && parent_1_id > 0
+  puts "#{person.name}'s parents, #{Person.find(parent_1_id).name} and #{Person.find(parent_2_id).name} are added"
+  else
+    error
+  end
+
+end
+def edit_parents
   puts "\n "
   list
   puts "\n Who would you like to add parent(s) to"
   person = Person.find(gets.chomp.to_i)
   puts "Please enter the id of parent 1 or np for no parent"
-  parent_1 = gets.chomp.to_i
-  if parent_1 == "np"
-    parent_1 = 0
+  parent_1_id = gets.chomp.to_i
+  if parent_1_id == "np"
+    parent_1_id = 0
   end
   puts "Please enter the id of parent 2 or np for no parent"
-  parent_2 = gets.chomp.to_i
-  if parent_2 == "np"
-    parent_2 = 0
+  parent_2_id = gets.chomp.to_i
+  if parent_2_id == "np"
+    parent_2_id = 0
   end
-  person.update(parent_1: parent_1, parent_2: parent_2)
-  if parent_1 == 0 && parent_2 == 0
+  person.update(parent_1_id: parent_1_id, parent_2_id: parent_2_id)
+  if parent_1_id == 0 && parent_2_id == 0
     puts "#{person.name}'s parent status has been updated"
-  elsif parent_2 == 0
-  puts "#{person.name}'s parent, #{Person.find(parent_1).name} has been added as a single parent...depressing"
-  elsif parent_2 > 0 && parent_1 > 0
-  puts "#{person.name}'s parents, #{Person.find(parent_1).name} and #{Person.find(parent_2).name} are added"
+  elsif parent_2_id == 0
+  puts "#{person.name}'s parent, #{Person.find(parent_1_id).name} has been added as a single parent...depressing"
+  elsif parent_2_id > 0 && parent_1_id > 0
+  puts "#{person.name}'s parents, #{Person.find(parent_1_id).name} and #{Person.find(parent_2_id).name} are added"
   else
     error
   end
